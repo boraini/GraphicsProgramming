@@ -1,7 +1,6 @@
 #include "MaterialManager.hpp"
 
 #include <unordered_map>
-#include <glad/glad.h>
 #include <string>
 #include <stb_image.h>
 #include <spdlog/spdlog.h>

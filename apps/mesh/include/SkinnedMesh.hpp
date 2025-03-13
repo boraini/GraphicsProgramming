@@ -1,9 +1,9 @@
 #pragma once
 
+#include "opengl.hpp"
 #include <string>
 #include <unordered_map>
 #include <assimp/scene.h>
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include "shader.hpp"
 

@@ -8,10 +8,6 @@
 
 #include "MaterialManager.hpp"
 
-void debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
-    printf("OpenGL debug error: %s\n", message);
-};
-
 class App : public BaseScaffold {
     void setup() {
         mGlobalMaterialManager = std::make_unique<MaterialManager>();
@@ -26,9 +22,6 @@ class App : public BaseScaffold {
 
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
-
-        glEnable(GL_DEBUG_OUTPUT);
-        glDebugMessageCallback(&debugCallback, nullptr);
     }
 
     void cleanup() {

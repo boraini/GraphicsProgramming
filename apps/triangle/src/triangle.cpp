@@ -1,6 +1,7 @@
+#include "opengl.hpp"
 #include "scaffold.hpp"
 #include "shader.hpp"
-#include <glad/glad.h>
+#include "shaders.hpp"
 #include <memory>
 #include <backends/imgui_impl_opengl3.h>
 
@@ -21,8 +22,8 @@ public:
 	}
 	void setup() {
 		mShader = std::make_unique<Shader>();
-		mShader->addSource(PROJECT_SOURCE_DIR "shaders/2d.vert");
-		mShader->addSource(PROJECT_SOURCE_DIR "shaders/2d.frag");
+		mShader->addSource("vertex shader", GL_VERTEX_SHADER, triangle_vert_count, triangle_vert, triangle_vert_lens);
+		mShader->addSource("fragment shader", GL_FRAGMENT_SHADER, triangle_frag_count, triangle_frag, triangle_frag_lens);
 		mShader->link();
 
 		glGenVertexArrays(1, &mVertexArray);

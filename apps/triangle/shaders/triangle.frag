@@ -1,7 +1,9 @@
-#version 330 core
+#version 300 es
+
+precision highp float;
 
 in vec3 vertexColor;
-layout(location = 0) out vec4 FragColor;
+out vec4 FragColor;
 
 void main() {
     FragColor = vec4(vertexColor, 1.0);

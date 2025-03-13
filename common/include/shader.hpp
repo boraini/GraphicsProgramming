@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glad/glad.h>
+#include "opengl.hpp"
 #include <string>
 
 class Shader {
@@ -14,6 +14,7 @@ public:
 	}
 
 	void addSource(std::string filename);
+	void addSource(std::string label, GLuint shaderType, unsigned int count, const char** lines, const int* lineLengths);
 	void link();
 	int getUniform(std::string name) const;
 	void use();

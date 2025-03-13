@@ -33,9 +33,15 @@ void Shader::addSource(std::string filename) {
 	const char* sourceStr = source.c_str();
 	const int sourceLength = source.length();
 
-	shader = glCreateShader(getShaderType(filename));
-	
-	glShaderSource(shader, 1, &sourceStr, &sourceLength);
+	addSource(filename, getShaderType(filename), 1, &sourceStr, &sourceLength);
+}
+
+void Shader::addSource(std::string label, GLuint shaderType, unsigned int count, const char** lines, const int* lineLengths) {
+	GLuint shader = 0;
+
+	shader = glCreateShader(shaderType);
+
+	glShaderSource(shader, count, lines, lineLengths);
 
 	glCompileShader(shader);
 
@@ -44,10 +50,10 @@ void Shader::addSource(std::string filename) {
 	glGetShaderInfoLog(shader, sizeof(infoLogBuffer), &logLength, infoLogBuffer);
 
 	if (logLength > 0) {
-		spdlog::critical("There are shader compilation errors for {}!\n{}", filename, infoLogBuffer);
+		spdlog::critical("There are shader compilation errors for {}!\n{}", label, infoLogBuffer);
 		return;
 	}
-	
+
 	glAttachShader(mProgram, shader);
 
 	glDeleteShader(shader);

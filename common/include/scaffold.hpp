@@ -1,8 +1,13 @@
-#include <glfw/glfw3.h>
+#pragma once
+
 #include <string>
+#include <functional>
+
+#include "opengl.hpp"
+
+#include <GLFW/glfw3.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <backends/imgui_impl_glfw.h>
-#include <glad/glad.h>
 
 // Class with a lot of methods that you can override in order to hook code to different points in the window lifecycle.
 class Scaffold {
@@ -37,9 +42,12 @@ void resizeCallback(GLFWwindow* window, int width, int height)
     windowSizeNeedsUpdate = true;
 }
 
+std::function<void()> loop;
+void main_loop() { loop(); }
+
 // Run the given application in a new window, calling the scaffold methods whenever appropriate
 int runApplication(Scaffold& app) {
-    
+
     GLFWwindow* window;
 
     /* Initialize the library */
@@ -57,8 +65,10 @@ int runApplication(Scaffold& app) {
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
 
+#ifndef EMSCRIPTEN
     /* Load GLAD bindings */
     gladLoadGL();
+#endif
 
     /* Create Context of ImGui */
     ImGui::CreateContext();
@@ -70,8 +80,7 @@ int runApplication(Scaffold& app) {
     glfwSetWindowSizeCallback(window, &resizeCallback);
 
     /* Loop until the user closes the window */
-    while (!glfwWindowShouldClose(window))
-    {
+    loop = [&] {
         glfwPollEvents();
         if (windowSizeNeedsUpdate) {
             int width, height;
@@ -83,11 +92,11 @@ int runApplication(Scaffold& app) {
             windowSizeNeedsUpdate = false;
         }
 
-        if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0)
+        /*if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0)
         {
             ImGui_ImplGlfw_Sleep(10);
-            continue;
-        }
+            return;
+        }*/
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -105,7 +114,14 @@ int runApplication(Scaffold& app) {
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
-    }
+        };
+
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop(main_loop, 0, true);
+#else
+    while (!glfwWindowShouldClose(window))
+        main_loop();
+#endif
 
     app.cleanup();
     ImGui_ImplOpenGL3_Shutdown();

@@ -2,8 +2,8 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 
+#include "opengl.hpp"
 #include <unordered_map>
-#include <glad/glad.h>
 #include <string>
 #include <memory>
 

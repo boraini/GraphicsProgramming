@@ -2,4 +2,5 @@
 .vs
 .idea
 out
-cmake-*
+cmake*
+!CMakeLists.txt
