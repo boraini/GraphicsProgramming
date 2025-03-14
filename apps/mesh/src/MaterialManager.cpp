@@ -42,6 +42,34 @@ GLuint MaterialManager::getTexture(std::string path) {
 	return mTextures[path];
 }
 
+void MaterialManager::addTexture(std::string path, const aiTexture* texture) {
+	GLuint id, format;
+	glGenTextures(1, &id);
+	mTextures[path] = id;
+	if (texture->CheckFormat(texture->achFormatHint)) {
+		int width; int height; int channels;
+		unsigned char* tex = stbi_load_from_memory((unsigned char*)texture->pcData, texture->mWidth, &width, &height, &channels, 0);
+
+		// Set the Correct Channel Format
+		switch (channels)
+		{
+		case 1: format = GL_ALPHA;     break;
+		case 2: format = GL_LUMINANCE; break;
+		case 3: format = GL_RGB;       break;
+		case 4: format = GL_RGBA;      break;
+		}
+
+		glBindTexture(GL_TEXTURE_2D, id);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, format,
+			width, height, 0, format, GL_UNSIGNED_BYTE, tex);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+}
+
 void MaterialManager::unloadTextures() {
 	for (std::pair<std::string, GLuint> kvp : mTextures) {
 		glDeleteTextures(1, &kvp.second);

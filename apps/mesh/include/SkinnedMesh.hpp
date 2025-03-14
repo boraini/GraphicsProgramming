@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <assimp/scene.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include "shader.hpp"
 
 struct SkinnedVertex {
@@ -37,12 +38,30 @@ struct Bone {
 	std::string name;
 };
 
+struct BoneClip {
+	// Index of the bone this clip relates to
+	int boneIndex;
+	// List of keyframes in ascending order of timeOffset
+	std::vector<std::pair<double, glm::vec3>> positionFrames;
+	std::vector<std::pair<double, glm::vec3>> scaleFrames;
+	std::vector<std::pair<double, glm::quat>> rotationFrames;
+};
+
+struct SkinnedMeshAnimation {
+	double duration;
+	std::vector<BoneClip> clips;
+};
+
 // Object class that contains a set of meshes that are deformed by some bones.
 // It can be loaded from any file format that Assimp can extract an armature and bones from.
 class SkinnedMesh {
 public:
 	// Load from the given file.
 	SkinnedMesh(std::string filename);
+	// Set the currently active animation.
+	void setAnimation(std::string name);
+	// Update the currently active animation.
+	void animate(double t);
 	// Draw each deformed mesh using OpenGL.
     void draw(glm::mat4 projection, glm::mat4 cameraInverse, glm::mat4 matrix);
 	// Get a reference to a bone by its name.
@@ -52,10 +71,14 @@ private:
 	void parse(std::string assetPath, const aiScene* scene, const aiMesh* mesh, const std::vector<std::vector<std::pair<float, int>>>& sortedWeights);
     void createBoneMatrices(int parentIndex, const aiNode* currentBone, std::unordered_map<const aiNode*, const aiBone*>& nodeBones, std::unordered_map<const aiNode*, int>& boneMatrixIndices);
 
+	void parseAnimation(const aiScene* scene);
+
 	std::vector<Bone> mBones;
 	std::vector<glm::mat4> mBoneNodeMatrices;
 	std::vector<glm::mat4> mBoneMatrices;
     std::vector<Mesh> mSkinnedMeshes;
+	std::unordered_map<std::string, SkinnedMeshAnimation> mAnimations;
+	std::string mCurrentAnimation;
 
 	inline static std::unique_ptr<Shader> mShader;
 };

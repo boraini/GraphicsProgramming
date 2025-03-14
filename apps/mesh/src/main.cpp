@@ -19,7 +19,7 @@ class App : public BaseScaffold {
         mGlobalMaterialManager = std::make_unique<MaterialManager>();
         globalMaterialManager = mGlobalMaterialManager.get();
         mMesh = std::make_unique<SkinnedMesh>("dancing_vampire/dancing_vampire.dae");
-
+        mMesh->setAnimation("Hips");
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
 
@@ -53,6 +53,7 @@ class App : public BaseScaffold {
         glm::mat4 modelMatrix = glm::identity<glm::mat4>();
         modelMatrix = glm::scale(modelMatrix, glm::vec3(0.02f, 0.02f, 0.02f));
 
+        mMesh->animate(nowTime);
         mMesh->draw(projectionMatrix, glm::inverse(cameraMatrix), modelMatrix);
     }
 

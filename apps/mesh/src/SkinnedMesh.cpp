@@ -140,6 +140,8 @@ void SkinnedMesh::parse(std::string assetPath, const aiScene* scene) {
         parse(assetPath, scene, mesh, boneInfluencesPerVertex);
     }
 
+    parseAnimation(scene);
+
     std::stack<int> current{};
     current.push(0);
     for (int i = 0; i < mBones.size(); i++) {
@@ -171,15 +173,31 @@ void SkinnedMesh::parse(std::string assetPath, const aiScene* scene, const aiMes
     for (int i = 0; i < material->GetTextureCount(aiTextureType_DIFFUSE); i++) {
         aiString str;
         material->GetTexture(aiTextureType_DIFFUSE, i, &str);
-        diffuseTexture = assetPath + "/" + str.C_Str();
-        globalMaterialManager->getTexture(diffuseTexture);
+
+        const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(str.C_Str());
+        if (embeddedTexture) {
+            diffuseTexture = str.C_Str();
+            globalMaterialManager->addTexture(str.C_Str(), embeddedTexture);
+        }
+        else {
+            diffuseTexture = assetPath + "/" + str.C_Str();
+            globalMaterialManager->getTexture(diffuseTexture);
+        }
     }
 
     for (int i = 0; i < material->GetTextureCount(aiTextureType_SPECULAR); i++) {
         aiString str;
         material->GetTexture(aiTextureType_SPECULAR, i, &str);
-        specularTexture = assetPath + "/" + str.C_Str();
-        globalMaterialManager->getTexture(specularTexture);
+        
+        const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(str.C_Str());
+        if (embeddedTexture) {
+            specularTexture = str.C_Str();
+            globalMaterialManager->addTexture(str.C_Str(), embeddedTexture);
+        }
+        else {
+            specularTexture = assetPath + "/" + str.C_Str();
+            globalMaterialManager->getTexture(diffuseTexture);
+        }
     }
 
     std::vector<SkinnedVertex> vertexBuffer{};
