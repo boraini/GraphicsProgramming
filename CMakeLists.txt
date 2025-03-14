@@ -12,11 +12,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
+set(WEBSITE_ROOT ${CMAKE_BINARY_DIR}/website)
 # Output directories
 if(EMSCRIPTEN)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/emscripten/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/emscripten/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/website)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${WEBSITE_ROOT})
 else()
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/native/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/native/lib)
@@ -68,7 +69,7 @@ endif()
 
 # Emscripten requires that we use their ports for some libraries
 if(EMSCRIPTEN)
-    set(EMSCRIPTEN_COMPILER_FLAGS "-sUSE_ZLIB=1 -sUSE_WEBGL2=1 -sUSE_GLFW=3 -sUSE_BULLET=1 -g -gsource-map")
+    set(EMSCRIPTEN_COMPILER_FLAGS "-sUSE_ZLIB=1 -sUSE_WEBGL2=1 -sUSE_GLFW=3 -sUSE_BULLET=1 -sFETCH=1 -sINITIAL_MEMORY=134217728 -sALLOW_MEMORY_GROWTH=1 -g")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EMSCRIPTEN_COMPILER_FLAGS}")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EMSCRIPTEN_COMPILER_FLAGS}")
 
@@ -113,13 +114,28 @@ file(GLOB PROJECT_CONFIGS CMakeLists.txt
                          .gitattributes
                          .gitignore
                          .gitmodules)
+file(GLOB COMMON_ASSETS common/assets/**/*)
 
 source_group("Common Headers" FILES ${COMMON_HEADERS})
 source_group("Common Shaders" FILES ${COMMON_SHADERS})
 source_group("Common Sources" FILES ${COMMON_SOURCES})
 source_group("Vendors" FILES ${VENDORS_SOURCES})
 
+if(EMSCRIPTEN)
+# fetch.hpp will load from the website root
+add_definitions(-DGLFW_INCLUDE_NONE -DCOMMON_ASSETS_DIR=\"/assets/\")
+else()
+# fetch.hpp will load from the assets directory
 add_definitions(-DGLFW_INCLUDE_NONE -DCOMMON_ASSETS_DIR=\"${CMAKE_CURRENT_LIST_DIR}/common/assets/\")
+endif()
+
+if(EMSCRIPTEN)
+add_custom_target(website_assets)
+add_custom_command(
+          TARGET website_assets POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/common/assets ${WEBSITE_ROOT}/assets
+          DEPENDS ${COMMON_ASSETS})
+endif()
 
 # Add each app as an executable (probably not good practice)
 message("Adding apps")
@@ -165,6 +181,11 @@ FOREACH(child ${children})
           TARGET ${project} POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E copy_directory ${child}/shaders $<TARGET_FILE_DIR:${project}>
           DEPENDS ${COMMON_SHADERS} ${PROJECT_SHADERS})
+      
+      # Copy assets to the website root
+      if(EMSCRIPTEN)
+      
+      endif()
 
       # Produce the shaders.hpp file
       add_custom_target(${project}-prebuild DEPENDS ${PROJECT_SHADERS})
@@ -176,6 +197,8 @@ FOREACH(child ${children})
       
       if(EMSCRIPTEN)
           # Copy web files
+          add_dependencies(${project} website_assets)
+
           add_custom_command(
               TARGET ${project} POST_BUILD
               COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/common/web $<TARGET_FILE_DIR:${project}>

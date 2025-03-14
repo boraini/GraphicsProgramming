@@ -1,6 +1,7 @@
 #pragma once
 
 #include "opengl.hpp"
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <assimp/scene.h>
@@ -43,17 +44,18 @@ public:
 	// Load from the given file.
 	SkinnedMesh(std::string filename);
 	// Draw each deformed mesh using OpenGL.
-    void draw(const Shader& shader, glm::mat4 projection, glm::mat4 cameraInverse, glm::mat4 matrix);
+    void draw(glm::mat4 projection, glm::mat4 cameraInverse, glm::mat4 matrix);
 	// Get a reference to a bone by its name.
 	Bone& getBone(std::string name);
 private:
 	void parse(const std::string assetPath, const aiScene* scene);
 	void parse(std::string assetPath, const aiScene* scene, const aiMesh* mesh, const std::vector<std::vector<std::pair<float, int>>>& sortedWeights);
     void createBoneMatrices(int parentIndex, const aiNode* currentBone, std::unordered_map<const aiNode*, const aiBone*>& nodeBones, std::unordered_map<const aiNode*, int>& boneMatrixIndices);
-	void computeMatrixUniform(int i, aiNode* currentNode, const glm::mat4& parentTransform);
 
 	std::vector<Bone> mBones;
 	std::vector<glm::mat4> mBoneNodeMatrices;
 	std::vector<glm::mat4> mBoneMatrices;
     std::vector<Mesh> mSkinnedMeshes;
+
+	inline static std::unique_ptr<Shader> mShader;
 };

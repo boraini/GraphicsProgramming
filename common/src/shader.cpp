@@ -72,6 +72,16 @@ void Shader::link() {
 	}
 }
 
+int Shader::getAttribute(std::string name) const {
+	int location = glGetAttribLocation(mProgram, name.c_str());
+
+	if (location == -1) {
+		spdlog::warn("Attribute location \"{}\" not found!", name);
+	}
+
+	return location;
+}
+
 int Shader::getUniform(std::string name) const {
 	int location = glGetUniformLocation(mProgram, name.c_str());
 
@@ -84,4 +94,8 @@ int Shader::getUniform(std::string name) const {
 
 void Shader::use() {
 	glUseProgram(mProgram);
+}
+
+GLuint Shader::get() {
+	return mProgram;
 }

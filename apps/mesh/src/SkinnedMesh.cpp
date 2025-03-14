@@ -1,14 +1,17 @@
 #include "SkinnedMesh.hpp"
-#include "MaterialManager.hpp"
-#include <assimp/Importer.hpp>
+
+#include <vector>
+#include <stack>
+#include <iostream>
+
 #include <assimp/postprocess.h>
 #include <spdlog/spdlog.h>
-#include <vector>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <stack>
-#include <iostream>
+#include "MaterialManager.hpp"
+#include "fetch.hpp"
+#include "shaders.hpp"
 
 constexpr auto BONES_PER_VERTEX = 4;
 
@@ -31,19 +34,22 @@ glm::mat4 convertMatrix(const aiMatrix4x4& aiMat)
 }
 
 SkinnedMesh::SkinnedMesh(std::string filename) {
-    Assimp::Importer loader;
-    auto fullpath = COMMON_ASSETS_DIR "/" + filename;
-    aiScene const* scene = loader.ReadFile(
-        fullpath,
+    if (mShader == nullptr) {
+        mShader = std::make_unique<Shader>();
+        mShader->addSource("SkinnedMesh.vert", GL_VERTEX_SHADER, SkinnedMesh_vert_count, SkinnedMesh_vert, SkinnedMesh_vert_lens);
+        mShader->addSource("SkinnedMesh.frag", GL_FRAGMENT_SHADER, SkinnedMesh_frag_count, SkinnedMesh_frag, SkinnedMesh_frag_lens);
+        mShader->link();
+    }
+
+    fetch_assimp_scene(
+        COMMON_ASSETS_DIR,
+        filename,
         aiProcessPreset_TargetRealtime_MaxQuality |
         aiProcess_OptimizeGraph |
         aiProcess_FlipUVs |
-        aiProcess_PopulateArmatureData);
-
-    // Walk the Tree of Scene Nodes
-    auto index = fullpath.find_last_of("/");
-    if (!scene) fprintf(stderr, "%s\n", loader.GetErrorString());
-    else parse(fullpath.substr(0, index), scene);
+        aiProcess_PopulateArmatureData,
+        [this](std::string assetPath, const aiScene* scene) { parse(assetPath, scene); }
+    );
 }
 
 void SkinnedMesh::parse(std::string assetPath, const aiScene* scene) {
@@ -213,11 +219,11 @@ void SkinnedMesh::parse(std::string assetPath, const aiScene* scene, const aiMes
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vi);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices.front(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, position));
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, normal));
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, uv));
-    glVertexAttribIPointer(3, 4, GL_INT, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, bone));
-    glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, influence));
+    glVertexAttribPointer(mShader->getAttribute("position"), 3, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, position));
+    glVertexAttribPointer(mShader->getAttribute("normal"), 3, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, normal));
+    glVertexAttribPointer(mShader->getAttribute("uv"), 2, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, uv));
+    glVertexAttribIPointer(mShader->getAttribute("bone"), 4, GL_INT, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, bone));
+    glVertexAttribPointer(mShader->getAttribute("influence"), 4, GL_FLOAT, GL_FALSE, sizeof(SkinnedVertex), (void*)offsetof(SkinnedVertex, influence));
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
@@ -242,7 +248,12 @@ void SkinnedMesh::createBoneMatrices(int parentIndex, const aiNode* currentBone,
     }
 }
 
-void SkinnedMesh::draw(const Shader& shader, glm::mat4 projection, glm::mat4 cameraInverse, glm::mat4 matrix) {
+void SkinnedMesh::draw(glm::mat4 projection, glm::mat4 cameraInverse, glm::mat4 matrix) {
+    // Not loaded yet.
+    if (mSkinnedMeshes.size() == 0) return;
+
+    mShader->use();
+
     mBoneNodeMatrices[0] = glm::identity<glm::mat4>();
     glm::mat4 globalInverse = glm::inverse(mBones[0].relativeMatrix);
     for (int i = 0; i < mBones.size(); i++) {
@@ -250,10 +261,10 @@ void SkinnedMesh::draw(const Shader& shader, glm::mat4 projection, glm::mat4 cam
         mBoneMatrices[mBones[i].matrixIndex] = globalInverse * mBoneNodeMatrices[i] * mBones[i].offsetMatrix;
     }
 
-    glUniformMatrix4fv(shader.getUniform("projectionMatrix"), 1, GL_FALSE, glm::value_ptr(projection));
-    glUniformMatrix4fv(shader.getUniform("cameraInverseMatrix"), 1, GL_FALSE, glm::value_ptr(cameraInverse));
-    glUniformMatrix4fv(shader.getUniform("objectMatrix"), 1, GL_FALSE, glm::value_ptr(matrix));
-    glUniformMatrix4fv(shader.getUniform("boneMatrices"), mBoneMatrices.size(), GL_FALSE, glm::value_ptr(mBoneMatrices.front()));
+    glUniformMatrix4fv(SkinnedMesh::mShader->getUniform("projectionMatrix"), 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(SkinnedMesh::mShader->getUniform("cameraInverseMatrix"), 1, GL_FALSE, glm::value_ptr(cameraInverse));
+    glUniformMatrix4fv(SkinnedMesh::mShader->getUniform("objectMatrix"), 1, GL_FALSE, glm::value_ptr(matrix));
+    glUniformMatrix4fv(SkinnedMesh::mShader->getUniform("boneMatrices"), mBoneMatrices.size(), GL_FALSE, glm::value_ptr(mBoneMatrices.front()));
 
     for (auto& mesh : mSkinnedMeshes) {
         glBindVertexArray(mesh.vertexArray);

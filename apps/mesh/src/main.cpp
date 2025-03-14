@@ -5,8 +5,14 @@
 #include <glm/glm.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
-
 #include "MaterialManager.hpp"
+#include <spdlog/spdlog.h>
+
+#ifndef __EMSCRIPTEN__
+void debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
+    spdlog::info("OpenGL debug message: {}", message);
+}
+#endif
 
 class App : public BaseScaffold {
     void setup() {
@@ -14,14 +20,13 @@ class App : public BaseScaffold {
         globalMaterialManager = mGlobalMaterialManager.get();
         mMesh = std::make_unique<SkinnedMesh>("dancing_vampire/dancing_vampire.dae");
 
-        mSkinnedMeshShader = std::make_unique<Shader>();
-        mSkinnedMeshShader->addSource("SkinnedMesh.vert");
-        mSkinnedMeshShader->addSource("SkinnedMesh.frag");
-        mSkinnedMeshShader->link();
-        mSkinnedMeshShader->use();
-
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
+
+#ifndef __EMSCRIPTEN__
+        glEnable(GL_DEBUG_OUTPUT);
+        glDebugMessageCallback(debugCallback, nullptr);
+#endif
     }
 
     void cleanup() {
@@ -48,13 +53,11 @@ class App : public BaseScaffold {
         glm::mat4 modelMatrix = glm::identity<glm::mat4>();
         modelMatrix = glm::scale(modelMatrix, glm::vec3(0.02f, 0.02f, 0.02f));
 
-        mSkinnedMeshShader->use();
-        mMesh->draw(*mSkinnedMeshShader, projectionMatrix, glm::inverse(cameraMatrix), modelMatrix);
+        mMesh->draw(projectionMatrix, glm::inverse(cameraMatrix), modelMatrix);
     }
 
 private:
     std::unique_ptr<SkinnedMesh> mMesh;
-    std::unique_ptr<Shader> mSkinnedMeshShader;
     std::unique_ptr<MaterialManager> mGlobalMaterialManager;
 };
 
